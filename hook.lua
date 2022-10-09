@@ -70,7 +70,7 @@ ffi.cdef [[
 local WH_GETMESSAGE = 3
 local WM_COMMAND = 0x0111
 local MSGFLT_ADD = 1
-local INFINITE = 0xFFFFFFFF
+local INFINITE, WAIT_OBJECT_0 = 0xFFFFFFFF, 0x00000000
 local GPTR = 0x0040
 local PAGE_EXECUTE_READWRITE = 0x40
 local SetEvent = C.GetProcAddress(C.GetModuleHandleA("kernel32.dll"), "SetEvent")
@@ -85,7 +85,6 @@ local lpCompiledCallback, lpGetMsgProc
 local hHook = nil
 
 local function generate_hook_callback()
-
     -- Taken from https://github.com/nucular/tcclua
     ffi.cdef [[
         struct TCCState;
@@ -156,7 +155,7 @@ local function generate_hook_callback()
         ["SetEvent"] = SetEvent,
         ["CallNextHookEx"] = C.GetProcAddress(C.GetModuleHandleA("user32.dll"), "CallNextHookEx")
     }) do
-        value = type(value) == "cdata" and tostring(value):match("^cdata<.+>: (.+)") or tostring(value)
+        value = type(value) == "cdata" and tostring(value):match("^cdata<.+>: (0x.+)") or tostring(value)
         hook = hook:gsub("#" .. name .. "#", value)
     end
 
@@ -211,10 +210,9 @@ _G.mp_event_loop = function()
 
         while mp.keep_running do
             local dwStatus = C.WaitForMultipleObjects(nEventCount, hEvents, false, dwTimeout - dwElapsed)
-            if dwStatus == 0 then --hMpvWakeupEvent signalled
+            if dwStatus == WAIT_OBJECT_0 then --hMpvWakeupEvent signalled
                 mp.dispatch_events(false)
-            end
-            if dwStatus == 1 then -- hCommandReceivedEvent signalled
+            elseif dwStatus == 1 then -- hCommandReceivedEvent signalled
                 local wmId = last_button_hit[0]
                 if callbacks[wmId] then
                     callbacks[wmId]()

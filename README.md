@@ -14,7 +14,9 @@ To install this, just run `git clone https://github.com/qwerty12/mpv-taskbar-but
 If you instead download the zipped version of this repo, just copy the mpv-taskbar-buttons folder as-is into your mpv scripts folder.
 The files **must** be in a subfolder of your mpv scripts folder for this script to load. To get rid of this, just delete the folder.
 
-Requests to add more buttons to this script will be ignored. If you have the code to perform a custom action already written but need help with adding a button to your own copy of the script to call it, make an issue. If you want to change what happens when one of the existing buttons are clicked, look at the `callbacks` table in hook.lua.
+If you want to change what happens when one of the existing buttons are clicked, look at the `callbacks` table in hook.lua.
+
+Requests to add more buttons to this script will be ignored. If you have code to perform a custom action already written but need help with adding a button to your own copy of this script to call it, make an issue. Windows allows up to seven buttons.
 
 ## Known issues
 
