@@ -87,8 +87,9 @@ local buttons = ffi.new("THUMBBUTTON[?]", C.BUTTON_LAST)
 local updated_buttons = ffi.new("THUMBBUTTON[?]", C.BUTTON_LAST)
 
 local function on_pause(_, value)
-    if icons[C.BUTTON_PLAY_PAUSE][value] ~= buttons[C.BUTTON_PLAY_PAUSE].hIcon then
-        buttons[C.BUTTON_PLAY_PAUSE].hIcon = icons[C.BUTTON_PLAY_PAUSE][value]
+    local newIcon = icons[C.BUTTON_PLAY_PAUSE][value]
+    if newIcon and newIcon ~= buttons[C.BUTTON_PLAY_PAUSE].hIcon then
+        buttons[C.BUTTON_PLAY_PAUSE].hIcon = newIcon
         buttons[C.BUTTON_PLAY_PAUSE].dwMask = C.THB_ICON
         w7taskbar:ThumbBarUpdateButtons(mpv_hwnd, 1, buttons + C.BUTTON_PLAY_PAUSE)
     end
@@ -156,7 +157,8 @@ local function on_idle()
         return
     end
 
-    local is_idle_active = mp.get_property_bool("idle-active", false)
+    local options = common.read_options()
+    local is_idle_active = not options.never_disable_buttons and mp.get_property_bool("idle-active", false)
     for i = C.BUTTON_FIRST, C.BUTTON_LAST - 1 do
         if not is_idle_active then
             buttons[i].dwMask = C.THB_ICON
@@ -179,7 +181,9 @@ local function on_idle()
     local hr = w7taskbar:ThumbBarAddButtons(mpv_hwnd, C.BUTTON_LAST, buttons)
     if hr >= 0 then
         mp.observe_property("pause", "bool", on_pause)
-        mp.observe_property("playlist-pos-1", "number", on_pl_pos_change)
+        if not options.never_disable_buttons then
+            mp.observe_property("playlist-pos-1", "number", on_pl_pos_change)
+        end
         mp.commandv("load-script", script_dir .. "/hook.lua")
     else
         mp.msg.error("ITaskbarList3::ThumbBarAddButtons failed with " .. hr)

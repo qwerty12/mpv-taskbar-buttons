@@ -20,6 +20,19 @@ for i = ffi.C.BUTTON_FIRST, ffi.C.BUTTON_LAST - 1 do
     common.button_ids[i] = 0x0400 + i
 end
 
+common.user_opts = {
+    never_disable_buttons = false,
+
+    prev_command = "",
+    play_pause_command = "",
+    next_command = ""
+}
+
+function common.read_options()
+    require("mp.options").read_options(common.user_opts, "mpv-taskbar-buttons")
+    return common.user_opts
+end
+
 function common.get_mpv_hwnd()
     local our_pid = mp.get_property_number("pid")
     local hwnd_pid = ffi.new("unsigned int[1]")

@@ -28,9 +28,15 @@ local common = require("common")
 local C = ffi.C
 
 local callbacks = {
-    [common.button_ids[C.BUTTON_PREV]] = function() mp.command("playlist-prev") end,
-    [common.button_ids[C.BUTTON_PLAY_PAUSE]] = function() mp.commandv("cycle", "pause") end,
-    [common.button_ids[C.BUTTON_NEXT]] = function() mp.command("playlist-next") end
+    [common.button_ids[C.BUTTON_PREV]] = function() mp.command(common.user_opts.prev_command == "" and "playlist-prev" or common.user_opts.prev_command) end,
+    [common.button_ids[C.BUTTON_PLAY_PAUSE]] = function()
+        if common.user_opts.play_pause_command == "" then
+            mp.commandv("cycle", "pause")
+        else
+            mp.command(common.user_opts.play_pause_command)
+        end
+    end,
+    [common.button_ids[C.BUTTON_NEXT]] = function() mp.command(common.user_opts.next_command == "" and "playlist-next" or common.user_opts.next_command) end
 }
 
 ffi.cdef [[
@@ -87,7 +93,6 @@ local hHook = nil
 local function generate_hook_callback()
     -- Taken from https://github.com/nucular/tcclua
     ffi.cdef [[
-        struct TCCState;
         typedef struct TCCState TCCState;
         TCCState *tcc_new(void);
         void tcc_delete(TCCState *s);
@@ -162,6 +167,7 @@ local function generate_hook_callback()
     assert(tcc.tcc_compile_string(state, hook) == 0)
     local size = tcc.tcc_relocate(state, nil)
     assert(size > 0)
+    -- a buffer allocated with ffi.new here eventually causes a crash
     local lpCompiled = C.GlobalAlloc(GPTR, size)
     assert(lpCompiled)
     assert(C.VirtualProtect(lpCompiled, size, PAGE_EXECUTE_READWRITE, ffi.new("int[1]")))
@@ -187,9 +193,11 @@ local function start()
     if mpv_tid == 0 then
         return
     end
+    common.read_options()
     lpCompiledCallback, lpGetMsgProc = generate_hook_callback()
     hHook = C.SetWindowsHookExW(WH_GETMESSAGE, lpGetMsgProc, nil, mpv_tid)
     if hHook then
+        -- allow unelevated Explorer to send message to mpv running as adminstrator
         C.ChangeWindowMessageFilterEx(mpv_hwnd, WM_COMMAND, MSGFLT_ADD, nil)
     end
 
@@ -225,6 +233,7 @@ _G.mp_event_loop = function()
 
             dwElapsed = (mp.get_time() * 1000) - dwStart
             if dwElapsed < dwTimeout then
+                -- should re-call mp.get_next_timeout() here and break if it's less than dwTimeout
                 -- continue
             else -- timed out
                 mp.dispatch_events(false)
