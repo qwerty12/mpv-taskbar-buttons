@@ -137,11 +137,11 @@ local function generate_hook_callback()
         int const wmId = ((unsigned short)(((unsigned __int64)(msg->wParam)) & 0xffff)); // LOWORD
         if (wmId >= #BUTTON_FIRST# && wmId <= #BUTTON_LAST#) {
             int volatile *const last_button_hit = (int*)#last_button_hit#;
-            void* volatile *const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
+            void* volatile const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
             volatile const SETEVENT SetEvent = (SETEVENT)#SetEvent#;
 
             *last_button_hit = wmId;
-            SetEvent(*hCommandReceivedEvent);
+            SetEvent(hCommandReceivedEvent);
             msg->message = 0x0000; // WM_NULL
             return 0;
         }
@@ -156,7 +156,7 @@ local function generate_hook_callback()
         ["BUTTON_FIRST"] = common.button_ids[C.BUTTON_FIRST],
         ["BUTTON_LAST"] = common.button_ids[C.BUTTON_LAST - 1],
         ["last_button_hit"] = last_button_hit,
-        ["hCommandReceivedEvent"] = hEvents + 1,
+        ["hCommandReceivedEvent"] = hEvents[1],
         ["SetEvent"] = SetEvent,
         ["CallNextHookEx"] = C.GetProcAddress(C.GetModuleHandleA("user32.dll"), "CallNextHookEx")
     }) do
