@@ -39,6 +39,9 @@ local callbacks = {
     [common.button_ids[C.BUTTON_NEXT]] = function() mp.command(common.user_opts.next_command == "" and "playlist-next" or common.user_opts.next_command) end
 }
 
+local options = common.read_options()
+local tcc_dll_path = mp.command_native({ "expand-path", common.user_opts.tcc_dll_path })
+
 ffi.cdef [[
     // From lua.c @ e686297ecf3928b768c674bb10faa6f352b999b8
     struct script_ctx {
@@ -103,7 +106,7 @@ local function generate_hook_callback()
         void *tcc_get_symbol(TCCState *s, const char *name);
     ]]
 
-    local tcc =  ffi.load(script_dir .. "/libtcc.dll")
+    local tcc =  ffi.load(tcc_dll_path)
     local state = tcc.tcc_new()
     tcc.tcc_set_output_type(state, 1) -- TCC_OUTPUT_MEMORY
     tcc.tcc_set_options(state, "-nostdinc -nostdlib")
