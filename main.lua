@@ -154,6 +154,7 @@ local function on_idle()
 
     mpv_hwnd = common.get_mpv_hwnd()
     if mpv_hwnd == nil then
+        mp.msg.error("Couldn't find mpv window handle")
         return
     end
 
@@ -176,7 +177,7 @@ local function on_idle()
                 buttons[i].hIcon = icons[i][key]
             end
         end
-    end    
+    end
 
     local hr = w7taskbar:ThumbBarAddButtons(mpv_hwnd, C.BUTTON_LAST, buttons)
     if hr >= 0 then

@@ -1,4 +1,15 @@
 local ffi = require("ffi")
+local C = ffi.C
+
+-- no point bundling this with common: hook.lua's package.path needs to be modified to in order to see this file...
+local function get_script_directory()
+    local ret = mp.get_script_directory()
+    if ret == nil then
+        -- if we're here, then either this isn't installed to a scripts subdir or it's called from a script loaded with load-script
+        ret = debug.getinfo(2, "S").source:sub(2):match("(.*/)") -- https://stackoverflow.com/a/23535333
+    end
+    return ret
+end
 
 ffi.cdef [[
     void* __stdcall FindWindowExA(void *hWndParent, void *hWndChildAfter, const char *lpszClass, const char *lpszWindow);
@@ -16,13 +27,13 @@ ffi.cdef [[
 local common = {
     button_ids = {}
 }
-for i = ffi.C.BUTTON_FIRST, ffi.C.BUTTON_LAST - 1 do
+for i = C.BUTTON_FIRST, C.BUTTON_LAST - 1 do
     common.button_ids[i] = 0x0400 + i
 end
 
 common.user_opts = {
     never_disable_buttons = false,
-    tcc_dll_path =  "~~scripts/mpv-taskbar-buttons/libtcc.dll",
+    tcc_dll_path = "",
 
     prev_command = "",
     play_pause_command = "",
@@ -31,6 +42,13 @@ common.user_opts = {
 
 function common.read_options()
     require("mp.options").read_options(common.user_opts, "mpv-taskbar-buttons")
+    if common.user_opts.tcc_dll_path ~= "" then
+        common.user_opts.tcc_dll_path = mp.command_native({ "expand-path", common.user_opts.tcc_dll_path })
+    else
+        local script_dir = get_script_directory()
+        assert(script_dir)
+        common.user_opts.tcc_dll_path = script_dir .. "/libtcc.dll"
+    end
     return common.user_opts
 end
 
@@ -40,9 +58,9 @@ function common.get_mpv_hwnd()
     local hwnd = nil
 
     repeat
-        hwnd = ffi.C.FindWindowExA(nil, hwnd, "mpv", nil)
+        hwnd = C.FindWindowExA(nil, hwnd, "mpv", nil)
         if hwnd ~= nil then
-            local thread_id = ffi.C.GetWindowThreadProcessId(hwnd, hwnd_pid)
+            local thread_id = C.GetWindowThreadProcessId(hwnd, hwnd_pid)
             if hwnd_pid[0] == our_pid then
                 return hwnd, thread_id
             end

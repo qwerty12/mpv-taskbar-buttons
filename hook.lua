@@ -18,29 +18,27 @@
     https://www.gnu.org/licenses/gpl-2.0.html
 --]]
 
--- can't use get_script_directory because this comes into existence through load-script
+-- can't use mp.get_script_directory() because this is loaded through load-script, which lacks context
 local script_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)") -- https://stackoverflow.com/a/23535333
 package.path = script_dir .. "\\?.lua;" .. package.path
 
 local ffi = require("ffi")
-local debug = require("debug")
 local common = require("common")
 local C = ffi.C
 
+local options = nil
+
 local callbacks = {
-    [common.button_ids[C.BUTTON_PREV]] = function() mp.command(common.user_opts.prev_command == "" and "playlist-prev" or common.user_opts.prev_command) end,
+    [common.button_ids[C.BUTTON_PREV]] = function() mp.command(options.prev_command == "" and "playlist-prev" or options.prev_command) end,
     [common.button_ids[C.BUTTON_PLAY_PAUSE]] = function()
-        if common.user_opts.play_pause_command == "" then
+        if options.play_pause_command == "" then
             mp.commandv("cycle", "pause")
         else
-            mp.command(common.user_opts.play_pause_command)
+            mp.command(options.play_pause_command)
         end
     end,
-    [common.button_ids[C.BUTTON_NEXT]] = function() mp.command(common.user_opts.next_command == "" and "playlist-next" or common.user_opts.next_command) end
+    [common.button_ids[C.BUTTON_NEXT]] = function() mp.command(options.next_command == "" and "playlist-next" or options.next_command) end
 }
-
-local options = common.read_options()
-local tcc_dll_path = mp.command_native({ "expand-path", common.user_opts.tcc_dll_path })
 
 ffi.cdef [[
     // From lua.c @ e686297ecf3928b768c674bb10faa6f352b999b8
@@ -106,8 +104,10 @@ local function generate_hook_callback()
         void *tcc_get_symbol(TCCState *s, const char *name);
     ]]
 
-    local tcc =  ffi.load(tcc_dll_path)
+    local tcc = ffi.load(options.tcc_dll_path)
+    assert(tcc)
     local state = tcc.tcc_new()
+    assert(state)
     tcc.tcc_set_output_type(state, 1) -- TCC_OUTPUT_MEMORY
     tcc.tcc_set_options(state, "-nostdinc -nostdlib")
     local hook = [[
@@ -137,16 +137,16 @@ local function generate_hook_callback()
         if (!msg || msg->message != #WM_COMMAND# || msg->hwnd != (void*)#mpv_hwnd#)
             goto cont;
 
-        int const wmId = ((unsigned short)(((unsigned __int64)(msg->wParam)) & 0xffff)); // LOWORD
-        if (wmId >= #BUTTON_FIRST# && wmId <= #BUTTON_LAST#) {
-            int volatile *const last_button_hit = (int*)#last_button_hit#;
-            void* volatile const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
-            volatile const SETEVENT SetEvent = (SETEVENT)#SetEvent#;
+            int const wmId = ((unsigned short)(((unsigned __int64)(msg->wParam)) & 0xffff)); // LOWORD
+            if (wmId >= #BUTTON_FIRST# && wmId <= #BUTTON_LAST#) {
+                int volatile *const last_button_hit = (int*)#last_button_hit#;
+                void* volatile const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
+                volatile const SETEVENT SetEvent = (SETEVENT)#SetEvent#;
 
-            *last_button_hit = wmId;
-            SetEvent(hCommandReceivedEvent);
-            msg->message = 0x0000; // WM_NULL
-            return 0;
+                *last_button_hit = wmId;
+                SetEvent(hCommandReceivedEvent);
+                msg->message = 0x0000; // WM_NULL
+                return 0;
         }
 
         cont:
@@ -196,7 +196,7 @@ local function start()
     if mpv_tid == 0 then
         return
     end
-    common.read_options()
+    options = common.read_options()
     lpCompiledCallback, lpGetMsgProc = generate_hook_callback()
     hHook = C.SetWindowsHookExW(WH_GETMESSAGE, lpGetMsgProc, nil, mpv_tid)
     if hHook then
