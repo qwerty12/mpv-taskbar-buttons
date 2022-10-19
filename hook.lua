@@ -134,19 +134,19 @@ local function generate_hook_callback()
             goto cont;
 
         const LPMSG msg = (LPMSG)lParam;
-        if (!msg || msg->message != #WM_COMMAND# || msg->hwnd != (void*)#mpv_hwnd#)
-            goto cont;
-
+        if (msg && msg->message == #WM_COMMAND# && msg->hwnd == (void*)#mpv_hwnd#) {
             int const wmId = ((unsigned short)(((unsigned __int64)(msg->wParam)) & 0xffff)); // LOWORD
-            if (wmId >= #BUTTON_FIRST# && wmId <= #BUTTON_LAST#) {
-                int volatile *const last_button_hit = (int*)#last_button_hit#;
-                void* volatile const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
-                volatile const SETEVENT SetEvent = (SETEVENT)#SetEvent#;
+            if (wmId < #BUTTON_FIRST# || wmId > #BUTTON_LAST#)
+                goto cont;
 
-                *last_button_hit = wmId;
-                SetEvent(hCommandReceivedEvent);
-                msg->message = 0x0000; // WM_NULL
-                return 0;
+            int volatile *const last_button_hit = (int*)#last_button_hit#;
+            void* volatile const hCommandReceivedEvent = (void*)#hCommandReceivedEvent#;
+            volatile const SETEVENT SetEvent = (SETEVENT)#SetEvent#;
+
+            *last_button_hit = wmId;
+            SetEvent(hCommandReceivedEvent);
+            msg->message = 0x0000; // WM_NULL
+            return 0;
         }
 
         cont:
