@@ -22,6 +22,7 @@ end
 
 common.user_opts = {
     never_disable_buttons = false,
+    tcc_dll_path =  "~~scripts/mpv-taskbar-buttons/libtcc.dll",
 
     prev_command = "",
     play_pause_command = "",
