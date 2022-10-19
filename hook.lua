@@ -200,7 +200,7 @@ local function start()
     lpCompiledCallback, lpGetMsgProc = generate_hook_callback()
     hHook = C.SetWindowsHookExW(WH_GETMESSAGE, lpGetMsgProc, nil, mpv_tid)
     if hHook then
-        -- allow unelevated Explorer to send message to mpv running as adminstrator
+        -- allow unelevated Explorer to post WM_COMMAND to mpv running as adminstrator
         C.ChangeWindowMessageFilterEx(mpv_hwnd, WM_COMMAND, MSGFLT_ADD, nil)
     end
 
@@ -223,10 +223,12 @@ _G.mp_event_loop = function()
             local dwStatus = C.WaitForMultipleObjects(nEventCount, hEvents, false, dwTimeout - dwElapsed)
             if dwStatus == WAIT_OBJECT_0 then --hMpvWakeupEvent signalled
                 mp.dispatch_events(false)
-            elseif dwStatus == 1 then -- hCommandReceivedEvent signalled
+                -- break? new timers might have been introduced
+            elseif dwStatus == WAIT_OBJECT_0 + 1 then -- hCommandReceivedEvent signalled
                 local wmId = last_button_hit[0]
                 if callbacks[wmId] then
                     callbacks[wmId]()
+                    -- if your modified callbacks introduce timers, break here
                 end
             end
 
@@ -236,7 +238,7 @@ _G.mp_event_loop = function()
 
             dwElapsed = (mp.get_time() * 1000) - dwStart
             if dwElapsed < dwTimeout then
-                -- should re-call mp.get_next_timeout() here and break if it's less than dwTimeout
+                -- re-call mp.get_next_timeout() here and break if less than dwTimeout?
                 -- continue
             else -- timed out
                 mp.dispatch_events(false)
@@ -251,14 +253,14 @@ _G.mp_event_loop = function()
         hHook = nil
     end
     if lpCompiledCallback ~= nil then
+        lpGetMsgProc = nil
         C.GlobalFree(lpCompiledCallback)
         lpCompiledCallback = nil
-        lpGetMsgProc = nil
     end
     mpv_set_wakeup_callback(script_ctx.mpv_handle_client, nil, nil)
-    if hEvents then
+    if hEvents ~= nil then
         for i = 0, nEventCount - 1 do
-            if hEvents[i] then
+            if hEvents[i] ~= nil then
                 C.CloseHandle(hEvents[i])
                 hEvents[i] = nil
             end
@@ -266,7 +268,7 @@ _G.mp_event_loop = function()
         C.GlobalFree(hEvents)
         hEvents = nil
     end
-    if last_button_hit then
+    if last_button_hit ~= nil then
         C.GlobalFree(last_button_hit)
         last_button_hit = nil
     end

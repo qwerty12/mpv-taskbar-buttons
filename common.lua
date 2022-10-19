@@ -1,7 +1,7 @@
 local ffi = require("ffi")
 local C = ffi.C
 
--- no point bundling this with common: hook.lua's package.path needs to be modified to in order to see this file...
+-- no point bundling this with common{}: hook.lua's package.path needs to be modified to in order to see this file...
 local function get_script_directory()
     local ret = mp.get_script_directory()
     if ret == nil then
@@ -46,7 +46,7 @@ function common.read_options()
         common.user_opts.tcc_dll_path = mp.command_native({ "expand-path", common.user_opts.tcc_dll_path })
     else
         local script_dir = get_script_directory()
-        assert(script_dir)
+        assert(script_dir) -- initial slash notwithstanding, try to avoid a DLL being loaded from the working directory...
         common.user_opts.tcc_dll_path = script_dir .. "/libtcc.dll"
     end
     return common.user_opts

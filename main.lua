@@ -66,7 +66,7 @@ local cbThumbButton = ffi.sizeof("THUMBBUTTON")
 local icon_disabled_state = bit.bor(C.THBF_DISABLED, C.THBF_NOBACKGROUND)
 
 -- note: I'm lazy and don't clean any of this up. I leave that task to Windows.
--- This script will only be loaded once per mpv process, so there's not going to be any leaks - well, because of that anyway.
+-- This script will only be loaded once per mpv process, so there's not going to be any leaks - from that, anyway.
 local w7taskbar = com.new(taskbarlist.clsid, "ITaskbarList3")
 if not w7taskbar then
     mp.msg.error("Couldn't create ITaskbarList3 instance")
